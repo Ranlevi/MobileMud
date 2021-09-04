@@ -1,7 +1,7 @@
 
 import React, {useState} from 'react';
 import { StyleSheet } from 'react-native';
-import {Box, NativeBaseProvider, Input, FlatList, Button } from 'native-base';
+import {Box, NativeBaseProvider, Input, FlatList, Flex } from 'native-base';
 
 // /*
 // A platform for text chat game. 
@@ -9,10 +9,11 @@ import {Box, NativeBaseProvider, Input, FlatList, Button } from 'native-base';
 // Everything is turn-based, because it's natural.
 
 // */
-let chat_item_id = 0;
+let chat_item_id = 1;
 
 const chat_data = [
-  {id: "0", text: "This is A Test"}
+  {id: "0", text: "This is A Test"},
+  {id: "1", text: "This is A Test"}
 ];
 
 export default function App() {
@@ -36,8 +37,9 @@ export default function App() {
         <FlatList 
           extraData={refreshFlatlist}
           data={chat_data}
-          renderItem={({item})=> (
-            <Box bg="primary.400" p={4}>{item.text}</Box>
+          renderItem={({item})=> (            
+            <Box style={styles.item} bg="primary.400" p={4}>{item.text}</Box>
+            
           )}
           keyExtractor={(item)=> item.id}
         />
@@ -59,9 +61,13 @@ export default function App() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flex: 1,    
     backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: 'column', //main axis - colum    
+    // alignItems: 'center',
+    
   },
+  item: {
+    // width: "fit-content"
+  }
 });

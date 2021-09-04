@@ -1,48 +1,60 @@
-import { StatusBar } from 'expo-status-bar';
-import React from 'react';
-import { StyleSheet, Text } from 'react-native';
-import {Box, NativeBaseProvider, Input } from 'native-base';
 
-/*
-A platform for text chat game. 
-Anyone can use it for what ever game they want.
-Everything is turn-based, because it's natural.
+import React, {useState} from 'react';
+import { StyleSheet } from 'react-native';
+import {Box, NativeBaseProvider, Input, FlatList, Button } from 'native-base';
 
-*/
+// /*
+// A platform for text chat game. 
+// Anyone can use it for what ever game they want.
+// Everything is turn-based, because it's natural.
 
-function TextBallon(props){
+// */
+let chat_item_id = 0;
 
-  return (
-    <Box 
-      bg="primary.100"
-    >
-      {props.text}
-    </Box>
-  )
-}
-
-
+const chat_data = [
+  {id: "0", text: "This is A Test"}
+];
 
 export default function App() {
+
+  const [refreshFlatlist, setRefreshFlatlist] = useState(false); 
+
+  const update = () => {
+
+    chat_item_id = chat_item_id+1;
+    let id = chat_item_id.toString(10);
+
+    let d = {id: id, text: "Hi3"};
+    chat_data.push(d);
+    setRefreshFlatlist(refreshFlatlist => !refreshFlatlist);    
+  }
+
   return (
     <NativeBaseProvider>
-      <StatusBar style="auto" />
-      <Box style={styles.container}>
-        <TextBallon text="You see a spider." />
-        <Input 
-          selectTextOnFocus={true}
-          isFullWidth={true}
-          onSubmitEditing={(event)=>{
-            if (event.nativeEvent.text==="ה"){
-              console.log("GGG");
-            }
-            
-          }}
+      <Box style={styles.container} safeArea>
+
+        <FlatList 
+          extraData={refreshFlatlist}
+          data={chat_data}
+          renderItem={({item})=> (
+            <Box bg="primary.400" p={4}>{item.text}</Box>
+          )}
+          keyExtractor={(item)=> item.id}
         />
         
+        <Input
+          selectTextOnFocus={true}
+          width="100%"
+          onSubmitEditing={(event)=>{
+            if (event.nativeEvent.text==="L"){
+              update();
+            }
+          }}
+        />
       </Box>
     </NativeBaseProvider>
-  );
+  )
+
 }
 
 const styles = StyleSheet.create({

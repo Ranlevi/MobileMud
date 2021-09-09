@@ -17,56 +17,56 @@ phase 2:
 
 */
 
-const WORLD = {
-  "room_0": {
-    name:        "Room 0",
-    description: "This is Room 0.",
-    exits:      {"north": "room_1"},
-    entities:   ['0001']
-  },
-  "room_1": {
-    name:        "Room 1",
-    description: "This is Room 1.",
-    exits:      {"south": "room_0"},
-    entities:   ['0001']
-  }
-}
+// const WORLD = {
+//   "room_0": {
+//     name:        "Room 0",
+//     description: "This is Room 0.",
+//     exits:      {"north": "room_1"},
+//     entities:   ['0001']
+//   },
+//   "room_1": {
+//     name:        "Room 1",
+//     description: "This is Room 1.",
+//     exits:      {"south": "room_0"},
+//     entities:   ['0001']
+//   }
+// }
 
-const player_obj = {
-  location: "room_0"
-}
+// const player_obj = {
+//   location: "room_0"
+// }
 
-const ENTITIES = {
-  '0001': {    
-    name:         'Archie',
-    type:         'Dog',
-    description:  'This is Archie. He is not very smart.',
-    location:     'room_1'  
-  }
-}
+// const ENTITIES = {
+//   '0001': {    
+//     name:         'Archie',
+//     type:         'Dog',
+//     description:  'This is Archie. He is not very smart.',
+//     location:     'room_1'  
+//   }
+// }
 
-let chat_item_id = 0;
-const chat_data = [  
-  {id: "0", msg_type: "entering_room", options: {room_name: 'room_0'}}
-];
+// let chat_item_id = 0;
+// const chat_data = [  
+//   {id: "0", msg_type: "entering_room", options: {room_name: 'room_0'}}
+// ];
 
 //////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////
-function ChatBox(props){
+// function ChatBox(props){
 
-  const [refreshFlatlist, setRefreshFlatlist] = useState(false); 
+//   const [refreshFlatlist, setRefreshFlatlist] = useState(false); 
 
-  return (
-    <FlatList 
-      extraData=  {refreshFlatlist}
-      data=       {props.data}
-      keyExtractor={(item)=> item.id}
-      renderItem={({item})=> (                                
-        <Box style={styles.chat_box_system}>{item.msg_type}</Box>
-      )}          
-    />
-  )
-}
+//   return (
+//     <FlatList 
+//       extraData=  {refreshFlatlist}
+//       data=       {props.data}
+//       keyExtractor={(item)=> item.id}
+//       renderItem={({item})=> (                                
+//         <Box style={styles.chat_box_system}>{item.msg_type}</Box>
+//       )}          
+//     />
+//   )
+// }
 
 
 
@@ -138,7 +138,7 @@ function ChatBox(props){
 
 //////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////
-export default function App() {
+// export default function App() {
 
   // const [refreshFlatlist, setRefreshFlatlist] = useState(false); 
 
@@ -206,33 +206,76 @@ export default function App() {
   //   setRefreshFlatlist(refreshFlatlist => !refreshFlatlist);    
   // }
 
+//   return (
+//     <NativeBaseProvider>
+//       <Box style={styles.container} safeArea>        
+        
+//         <ChatBox data={chat_data}/>
+
+//         {/* <FlatList 
+//           extraData=  {refreshFlatlist}
+//           data=       {chat_data}
+//           keyExtractor={(item)=> item.id}
+//           renderItem={({item})=> (                        
+//             // <ChatBox text={item.text} is_user_text={item.is_user_text} />
+//             <ChatBox data={item}/>
+//           )}          
+//         /> */}
+        
+//         <Input
+//           selectTextOnFocus={true}
+//           width="100%"
+//           onSubmitEditing={(event)=>{            
+//             process_input(event.nativeEvent.text);            
+//           }}
+//         />
+//       </Box>
+//     </NativeBaseProvider>
+//   )
+
+// }
+
+function ChatArea(props){
+  
+  return (
+    <FlatList 
+      extraData=    {props}
+      data=         {props.chat_data}
+      keyExtractor= {(item)=> item.id}
+      renderItem=   {({item})=>(
+        <Box>{item.text}</Box>
+      )}          
+    />
+  )
+}
+
+
+
+export default function App() {  
+  
+  let chat_data = [
+    {id:"0001", text:"This is a test."}  
+  ];
+
+  function process_input(evt){
+
+    chat_data.push({id:"0002", text: evt.nativeEvent.text});        
+  }
+
   return (
     <NativeBaseProvider>
-      <Box style={styles.container} safeArea>        
-        
-        <ChatBox data={chat_data}/>
+      <Box style={styles.container} safeArea>
 
-        {/* <FlatList 
-          extraData=  {refreshFlatlist}
-          data=       {chat_data}
-          keyExtractor={(item)=> item.id}
-          renderItem={({item})=> (                        
-            // <ChatBox text={item.text} is_user_text={item.is_user_text} />
-            <ChatBox data={item}/>
-          )}          
-        /> */}
-        
+        <ChatArea chat_data={chat_data} />
+
         <Input
           selectTextOnFocus={true}
           width="100%"
-          onSubmitEditing={(event)=>{            
-            process_input(event.nativeEvent.text);            
-          }}
+          onSubmitEditing={process_input}
         />
       </Box>
     </NativeBaseProvider>
   )
-
 }
 
 const styles = StyleSheet.create({

@@ -2,7 +2,7 @@
 import React, {useState}                            from 'react';
 import { StyleSheet, Text }                         from 'react-native';
 import {Box, NativeBaseProvider, Input, FlatList }  from 'native-base';
-import {Link }                                      from 'native-base';
+import {Link, Actionsheet }                         from 'native-base';
 
 /*
 A platform for text chat game. 
@@ -17,263 +17,398 @@ phase 2:
 
 */
 
-// const WORLD = {
-//   "room_0": {
-//     name:        "Room 0",
-//     description: "This is Room 0.",
-//     exits:      {"north": "room_1"},
-//     entities:   ['0001']
-//   },
-//   "room_1": {
-//     name:        "Room 1",
-//     description: "This is Room 1.",
-//     exits:      {"south": "room_0"},
-//     entities:   ['0001']
-//   }
-// }
+const WORLD = {
+  'ABCD': {
+    type:             "room",
+    name:             "ROOM0",
+    description:      "This is a normal room.",
+    exits:            {'north': 'ABCE'},
+    entities:         ['0001', '0002']
+  },
+  'ABCE': {
+    type:             "room",
+    name:             "ROOM1",
+    exits:            {'south': 'ABCD'},
+    description:      "This is another normal room.",
+    entities:         []
+  },
+  '0001': {
+    type:             'npc',
+    name:             'Archie', 
+    description:      "This is a Dog."},
+  '0002': {
+    type:             'npc', 
+    name:             'Bella', 
+    description:      "This is a Cat."}
+}
 
-// const player_obj = {
-//   location: "room_0"
-// }
+let player_obj = {
+  current_room_id: 'ABCD'
+}
 
-// const ENTITIES = {
-//   '0001': {    
-//     name:         'Archie',
-//     type:         'Dog',
-//     description:  'This is Archie. He is not very smart.',
-//     location:     'room_1'  
-//   }
-// }
+let chat_data = [
+  {id:                      "1", 
+   template:                "look_room", 
+   options: {
+    room_id:                "ABCD",
+     name:                  "ROOM0",     
+     description:           "This is a normal room.",
+     exits:                 ['north'],
+     entities:[
+      {name:               'Archie',
+       id:                 '0001'
+      },
+      {name:               'Bella',
+       id:                 '0002'
+      }
+     ]
+   }}  
+];
 
-// let chat_item_id = 0;
-// const chat_data = [  
-//   {id: "0", msg_type: "entering_room", options: {room_name: 'room_0'}}
-// ];
-
-//////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////
-// function ChatBox(props){
-
-//   const [refreshFlatlist, setRefreshFlatlist] = useState(false); 
-
-//   return (
-//     <FlatList 
-//       extraData=  {refreshFlatlist}
-//       data=       {props.data}
-//       keyExtractor={(item)=> item.id}
-//       renderItem={({item})=> (                                
-//         <Box style={styles.chat_box_system}>{item.msg_type}</Box>
-//       )}          
-//     />
-//   )
-// }
-
-
-
-
-
-
-
-// //////////////////////////////////////////////////////////
-// //////////////////////////////////////////////////////////
-// function generate_room_text(room){
+//////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////
+function parse_input(input){
+  let parsed_input = {
+    command: null,
+    target:  null
+  };
   
-//   let text = room.description;
-//   if (room.entities.length!==0){
-//     text += '\nIn the room with you:';
-//     for (const entity_id of room.entities){      
-//       text += '\n' + ENTITIES[entity_id].name;
-//     }
-//   }
+  let normalized_text= input.trim().toLowerCase();  
+  let re = /\s+/g; //search for all white spaces.
+  let arr = normalized_text.split(re);
 
-//   text += '\nExits: ';
-//   for (const exit in room.exits){
-//     text += exit + ' ';
-//   } 
+  if (arr.length===0){
+    //Do nothing
+  } else if (arr.length===1){
+    parsed_input.command = arr[0];  
+  } else if (arr.length===2){
+    parsed_input.command = arr[0];
+    parsed_input.target  = arr[1];
+  }  
+    
+  return parsed_input;
+}
 
-//   return text;
-// }
+//////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////
+function generate_new_id_for_chat_data(){
+  let current_id =  parseInt(chat_data[chat_data.length-1].id);    
+  let new_id     = (current_id+1).toString(10);  
+  return new_id;
+}
 
-//////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////
-// function ChatBox(props){
-
-//   if (props.data.msg_type==="entering_room"){
-
-//     let room_obj= WORLD[props.data.options.room_name]; 
-      
-//     let entities_section= null;
-//     if (room_obj.entities.length!==0){
-//       entities_section = room_obj.entities.map((entity_id) =>
-//         <Link isUnderlined key={entity_id}>{ENTITIES[entity_id].name}</Link>
-//       );      
-//     }
-
-//     return (
-//       <Box style={styles.chat_box_system}>
-//         <Link isUnderlined>{room_obj.name} onPress={toggleActionSheet('room')}</Link>
-//         <Text>{room_obj.description}</Text>
-//         <Text>In the room with you:</Text>
-//         {entities_section}
-//       </Box>
-//     )
-//   }
+//////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////
+function look_cmd(target=null){
+  //Generate a chat_data item in the 'look' template.
+  //target is matched by name.
+  
+  
+  if (target===null){
+    //Default for 'look' is to look at current room.
+    target = WORLD[player_obj.current_room_id].name.toLowerCase();
+  }  
 
   
-//   // if (props.is_user_text){
-//   //   return (
-//   //     <Box style={[styles.chat_box, {alignSelf:'flex-end', backgroundColor: 'pink'}]}>
-//   //       {props.text}
-//   //     </Box>
-//   //   )
-//   // } else {
-//   //   return (
-//   //     <Box style={[styles.chat_box, {alignSelf:'flex-start'}]}>
-//   //       {/* {props.text} */}
-//   //       {text}
-//   //     </Box>
-//   //   )
-//   // } 
-// }
 
-//////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////
-// export default function App() {
-
-  // const [refreshFlatlist, setRefreshFlatlist] = useState(false); 
-
-  // //////////////////////////////////////////////////////////
-  // function generate_chat_data(text, is_user_text){
-  //   chat_item_id = chat_item_id+1;
-  //   let data = {
-  //     id:           chat_item_id.toString(10),
-  //     text:         text,
-  //     is_user_text: is_user_text
-  //   };
-  //   chat_data.push(data);
-  //   setRefreshFlatlist(refreshFlatlist => !refreshFlatlist);    
-  // }
-
- 
-  // /////////////////////////
-  // const process_input = (text_input) => {
-
-  //   //If navigation command, we need to check if the room
-  //   //has the required exit. If so - move the player to that
-  //   //new room and show a description.
-
-  //   generate_chat_data(text_input, true);
-
-  //   text_input = text_input.trim().toLowerCase();
-
-  //   switch (text_input){
-  //     case ("n"):
-  //       text_input = 'north';
-  //       break;
-
-  //     case ("s"):
-  //       text_input = 'south';
-  //       break;
-
-  //     case ("e"):
-  //       text_input = 'east';
-  //       break;
-
-  //     case ("w"):
-  //       text_input = 'west';
-  //       break;
-  //   }
+  let item;
+  
+  if (target===WORLD[player_obj.current_room_id].name.toLowerCase()){
     
-  //   const POSSIBLE_EXITS = ['north', 'south', 'east', 'west'];
+    //Looking at the current room
+    let room_name =         WORLD[player_obj.current_room_id].name;
+    let room_description =  WORLD[player_obj.current_room_id].description;
+    let exits =             Object.keys(WORLD[player_obj.current_room_id].exits);    
+    let entities =          WORLD[player_obj.current_room_id].entities.map(arr_item => {
+      let obj  = {};
+      obj.name = WORLD[arr_item].name;
+      obj.id   = arr_item;
+      return obj;    
+    });
+  
+    item = {
+      id:                 generate_new_id_for_chat_data(),
+      template:           "look_room",
+      options: {
+        room_id:          player_obj.current_room_id,
+        name:             room_name,
+        description:      room_description,
+        exits:            exits,
+        entities:         entities
+      }
+    }
 
-  //   if (POSSIBLE_EXITS.includes(text_input)){
-  //     //This is a movement command.
-  //     if (WORLD[player_obj.location].exits.hasOwnProperty(text_input)){
-  //       generate_chat_data("You Move to the next room.", false);
-        
-  //       //Move the player and display room description.
-  //       player_obj.location = WORLD[player_obj.location].exits[text_input];        
-  //       let room_text = generate_room_text(WORLD[player_obj.location]);
-  //       generate_chat_data(room_text, false);
+  } else {
+    //Try to match the entities
+    let target_found = false;
 
-  //     } else {
-  //       generate_chat_data("Exit Not Available", false);  
-  //     }
-  //   } else {
-  //     generate_chat_data("Unknown command.", false);  
-  //   }
-    
-  //   setRefreshFlatlist(refreshFlatlist => !refreshFlatlist);    
-  // }
+    for (const entity_id of WORLD[player_obj.current_room_id].entities){
+      let entity_name = WORLD[entity_id].name.toLowerCase();
+      if (target===entity_name){
+        target_found = true;
+        item = {
+          id:                   generate_new_id_for_chat_data(),
+          template:             "look_entity",
+          options: {
+            name:               WORLD[entity_id].name,
+            id:                 entity_id,
+            description:        WORLD[entity_id].description
+          }
+        }
+      }
+    }
 
-//   return (
-//     <NativeBaseProvider>
-//       <Box style={styles.container} safeArea>        
-        
-//         <ChatBox data={chat_data}/>
+    if (!target_found){
+    //no suitable target found. Generate message to user.
+      item = {
+        id:           generate_new_id_for_chat_data(),
+        template:     'generic_message',
+        options: {
+          content:    `There is no ${target} around here.`
+        }
+      }
+    }
+  }   
+  
+  chat_data.push(item);    
+}
 
-//         {/* <FlatList 
-//           extraData=  {refreshFlatlist}
-//           data=       {chat_data}
-//           keyExtractor={(item)=> item.id}
-//           renderItem={({item})=> (                        
-//             // <ChatBox text={item.text} is_user_text={item.is_user_text} />
-//             <ChatBox data={item}/>
-//           )}          
-//         /> */}
-        
-//         <Input
-//           selectTextOnFocus={true}
-//           width="100%"
-//           onSubmitEditing={(event)=>{            
-//             process_input(event.nativeEvent.text);            
-//           }}
-//         />
-//       </Box>
-//     </NativeBaseProvider>
-//   )
+//////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////
+function move_cmd(cmd){  
+  
+  switch(cmd){
+    case('n'):
+      cmd = 'north';
+      break;
+    case('s'):
+      cmd = 'south';
+      break;
+    case('e'):
+      cmd = 'east';
+      break;
+    case('w'):
+      cmd = 'west';
+      break;
+    case('u'):
+      cmd = 'up';
+      break;
+    case('d'):
+      cmd = 'down';
+      break;
+  }
+  
+  let next_room_id =  WORLD[player_obj.current_room_id].exits[cmd];
+  
+  if (next_room_id!==undefined){
+    player_obj.current_room_id =next_room_id;
+    look_cmd();
+  } else {
+    let item = {
+      id:           generate_new_id_for_chat_data(),
+      template:     'generic_message',
+      options: {
+        content:    `There is no exit to ${cmd}.`
+      }
+    }
+    chat_data.push(item);  
+  }
+}
 
-// }
-
+//////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////
 function ChatArea(props){
-  
+  //Telegram-like UI element. Gets a chat_data array and displays
+  //it as a FlatList of Boxes. Each box is rendered according
+  //to a pre-determined template.
+  //
+
+  //----------------------------------------------------------
+  function renderItem({item}){
+
+    if (item.template==="look_room"){
+      return (
+        <Box style={styles.chat_box_system}>
+          <Link 
+            isUnderlined 
+            onPress={()=> props.handle_link_click('room', item.options.room_id)}
+          >
+            {item.options.name}
+          </Link>
+          <Text>{item.options.description}</Text>
+          <Text>Exits:</Text>
+          {item.options.exits.map((direction)=> 
+            <Link
+              isUnderlined
+              key={direction}
+              onPress={()=> props.handle_link_click('command', direction)}              
+            >
+              {direction}
+            </Link>
+          )}
+          <Text>You see:</Text>
+          {item.options.entities.map((arr_item)=>
+            <Link 
+              key={arr_item.id} 
+              isUnderlined 
+              onPress={()=> props.handle_link_click('npc', arr_item.id)}
+            >
+              {arr_item.name}
+            </Link>
+          )}
+        </Box>  
+      )
+
+    } else if (item.template==="look_entity"){
+      return (
+        <Box style={styles.chat_box_system}>
+          <Link 
+            isUnderlined 
+            onPress={()=> props.handle_link_click('npc', item.options.id)}
+          >
+            {item.options.name}
+          </Link>
+          <Text>{item.options.description}</Text>          
+        </Box> 
+      );
+
+    } else if (item.template==="generic_message"){
+      return (
+        <Box style={styles.chat_box_system}>
+          <Text>{item.options.content}</Text>
+        </Box>
+      );
+    }
+  };
+  //----------------------------------------------------------
+
   return (
     <FlatList 
       extraData=    {props}
       data=         {props.chat_data}
       keyExtractor= {(item)=> item.id}
-      renderItem=   {({item})=>(
-        <Box>{item.text}</Box>
-      )}          
+      renderItem=   {renderItem}          
     />
   )
 }
 
-
-
-export default function App() {  
+//////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////
+export default function App() {    
   
-  let chat_data = [
-    {id:"0001", text:"This is a test."}  
-  ];
+  const [showActionSheet, setShowActionSheet] = useState(false);
+  const [actionsheetType, setActionsheetType] = useState("");
+  const [actionsheetName, setActionsheetName] = useState("");
+  const [refreshChatArea, setRefreshChatArea] = useState(false);
+    
+  //----------------------------
+  function process_input(text){
+    
+    let parsed_input = parse_input(text);    
+    
+    switch(parsed_input.command){
+      case(null):
+        break;
 
-  function process_input(evt){
+      case('look'):
+      case('l'):
+      case('lo'):
+      case('loo'):        
+        look_cmd(parsed_input.target);
+        break;
 
-    chat_data.push({id:"0002", text: evt.nativeEvent.text});        
+      case('north'):
+      case('n'):
+      case('south'):
+      case('s'):
+      case('west'):
+      case('w'):
+      case('east'):
+      case('e'):
+      case('up'):
+      case('u'):
+      case('down'):
+      case('d'):      
+        move_cmd(parsed_input.command);
+        break;
+    }
+        
   }
+  
+  //----------------------------
+  function link_clicked(type, data){
+    //Handles clicks on link, according to their type.
+    
+    if (type==="room"){
+      //Set options for the Actionsheet
+      setActionsheetType(WORLD[data].type);
+      setActionsheetName(WORLD[data].name);
+      setShowActionSheet(true);    
+    } else if (type==="npc"){
+      //Set options for the Actionsheet
+      setActionsheetType(WORLD[data].type);
+      setActionsheetName(WORLD[data].name);
+      setShowActionSheet(true);    
+    } else if (type==="command"){
+      //Pass on as if a user-typed input.
+      //Neet to refrsh chat - else it doesn't know it need to redraw Flatlist.
+      setRefreshChatArea(refreshChatArea => !refreshChatArea);
+      process_input(data); 
+    }
+    
+  }  
 
+  //----------------------------
+  function get_actionsheet_items(){
+
+    if (actionsheetType==="room"){
+      let cmd = `look ${actionsheetName}`;
+
+      return(
+        <Actionsheet.Item 
+          onPress={()=> {
+            setShowActionSheet(false);
+            process_input(cmd);
+          }}
+        >
+        {cmd}
+        </Actionsheet.Item>
+      )
+    
+    } else if (actionsheetType==="npc"){
+      let cmd = `look ${actionsheetName}`;
+
+      return(
+        <Actionsheet.Item 
+          onPress={()=> {
+            setShowActionSheet(false);
+            process_input(cmd);
+          }}
+        >
+        {cmd}
+        </Actionsheet.Item>
+      )
+    }
+  }
+  
   return (
     <NativeBaseProvider>
       <Box style={styles.container} safeArea>
 
-        <ChatArea chat_data={chat_data} />
+        <ChatArea chat_data={chat_data} handle_link_click={link_clicked}/>
 
         <Input
-          selectTextOnFocus={true}
-          width="100%"
-          onSubmitEditing={process_input}
+          selectTextOnFocus=  {true}
+          width=              "100%"
+          onSubmitEditing=    {(evt)=> process_input(evt.nativeEvent.text)}
         />
       </Box>
+
+      <Actionsheet isOpen={showActionSheet}>
+        <Actionsheet.Content>        
+          {get_actionsheet_items()}
+        </Actionsheet.Content>
+      </Actionsheet>
     </NativeBaseProvider>
   )
 }

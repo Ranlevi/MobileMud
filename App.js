@@ -1,8 +1,8 @@
 
 import React, {useState}                            from 'react';
-import { StyleSheet, Text }                         from 'react-native';
+import { StyleSheet }                               from 'react-native';
 import {Box, NativeBaseProvider, Input, FlatList }  from 'native-base';
-import {Link, Actionsheet }                         from 'native-base';
+import {Link, Actionsheet, Text }                   from 'native-base';
 
 /*
 A platform for text chat game. 
@@ -43,7 +43,8 @@ const WORLD = {
 }
 
 let player_obj = {
-  current_room_id: 'ABCD'
+  current_room_id: 'ABCD',
+  health:          100
 }
 
 let chat_data = [
@@ -64,6 +65,8 @@ let chat_data = [
      ]
    }}  
 ];
+
+
 
 //////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////
@@ -228,7 +231,13 @@ function ChatArea(props){
 
     if (item.template==="look_room"){
       return (
-        <Box style={styles.chat_box_system}>
+        <Box 
+          style={styles.chat_box_system} 
+          borderRadius="10px" 
+          borderBottomLeftRadius="0px"
+          borderColor="primary.600"
+          borderWidth="3px"
+          >
           <Link 
             isUnderlined 
             onPress={()=> props.handle_link_click('room', item.options.room_id)}
@@ -261,7 +270,13 @@ function ChatArea(props){
 
     } else if (item.template==="look_entity"){
       return (
-        <Box style={styles.chat_box_system}>
+        <Box 
+          style={styles.chat_box_system} 
+          borderRadius="10px" 
+          borderBottomLeftRadius="0px"
+          borderColor="primary.600"
+          borderWidth="3px"
+          >
           <Link 
             isUnderlined 
             onPress={()=> props.handle_link_click('npc', item.options.id)}
@@ -274,10 +289,29 @@ function ChatArea(props){
 
     } else if (item.template==="generic_message"){
       return (
-        <Box style={styles.chat_box_system}>
+        <Box 
+          style={styles.chat_box_system} 
+          borderRadius="10px" 
+          borderBottomLeftRadius="0px"
+          borderColor="primary.600"
+          borderWidth="3px"
+          >
           <Text>{item.options.content}</Text>
         </Box>
       );
+
+    } else if (item.template==="user_text"){
+      return (
+        <Box 
+          style={styles.chat_box_user} 
+          borderRadius="10px" 
+          borderBottomRightRadius="0px"
+          borderColor="red.500"
+          borderWidth="2px"
+          >
+          <Text>{item.options.content}</Text>
+        </Box>
+      )
     }
   };
   //----------------------------------------------------------
@@ -300,10 +334,31 @@ export default function App() {
   const [actionsheetType, setActionsheetType] = useState("");
   const [actionsheetName, setActionsheetName] = useState("");
   const [refreshChatArea, setRefreshChatArea] = useState(false);
-    
+  const [infoBarText,     setInfoBarText]     = useState("Health: 100");
+  
+  //--------------------------------
+  function game_loop(){
+    setInterval(()=>{
+      process_input('look');
+    },1000);
+  }
+  
+  game_loop();
+
   //----------------------------
   function process_input(text){
-    
+
+    //Display the command on the chat
+    let item = {
+      id:         generate_new_id_for_chat_data(),
+      template:   "user_text",
+      options: {
+        content: text
+      }
+    };
+    chat_data.push(item);
+
+    //Process the input
     let parsed_input = parse_input(text);    
     
     switch(parsed_input.command){
@@ -397,6 +452,10 @@ export default function App() {
 
         <ChatArea chat_data={chat_data} handle_link_click={link_clicked}/>
 
+        <Box backgroundColor="white">
+          <Text fontSize="lg" >{infoBarText}</Text>
+        </Box>
+
         <Input
           selectTextOnFocus=  {true}
           width=              "100%"
@@ -416,11 +475,17 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1, 
-    backgroundColor: '#fff',            
+    backgroundColor: '#495057',            
   },
   chat_box_system: {
     alignSelf: 'flex-start',
-    backgroundColor: 'cyan',
+    backgroundColor: '#ffffff',
+    padding: 4,
+    margin: 5    
+  },
+  chat_box_user: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#FFFFFF',
     padding: 4,
     margin: 5    
   }

@@ -35,16 +35,27 @@ const WORLD = {
   '0001': {
     type:             'npc',
     name:             'Archie', 
-    description:      "This is a Dog."},
+    description:      "This is a Dog.",
+    health:           10,
+    damage:           1,
+    fighting_with_id: null
+  },
   '0002': {
     type:             'npc', 
     name:             'Bella', 
-    description:      "This is a Cat."}
+    description:      "This is a Cat.",
+    health:           10,
+    damage:           1,
+    fighting_with_id: null
+  }
 }
 
 let player_obj = {
-  current_room_id: 'ABCD',
-  health:          100
+  id:               '1234',
+  current_room_id:  'ABCD',
+  health:           100,
+  damage:           1,
+  fighting_with_id: null
 }
 
 let chat_data = [
@@ -98,6 +109,23 @@ function generate_new_id_for_chat_data(){
   let current_id =  parseInt(chat_data[chat_data.length-1].id);    
   let new_id     = (current_id+1).toString(10);  
   return new_id;
+}
+
+//////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////
+function kill_cmd(target=null){
+
+  let current_target_id = null;
+  
+  if (target===null){
+
+    current_target_id = WORLD[player_obj.current_room_id].entities[0];
+  }
+
+  player_obj.fighting_with_id = current_target_id;
+  WORLD[current_target_id].fighting_with_id = player_obj.id;
+
+  //todo: handle different cases, add message to chat
 }
 
 //////////////////////////////////////////////////////////////////
@@ -336,18 +364,35 @@ export default function App() {
   const [refreshChatArea, setRefreshChatArea] = useState(false);
   const [infoBarText,     setInfoBarText]     = useState("Health: 100");
   
+  setInterval(()=>{
+    game_loop();
+  },1000);
+
   //--------------------------------
   function game_loop(){
-    setInterval(()=>{
-      process_input('look');
-    },1000);
-  }
-  
-  game_loop();
+    
+    //Handle fights
+    if (player_obj.fighting_with_id!==null){
+      player_obj.health -= WORLD[player_obj.fighting_with_id].damage;
+      WORLD[player_obj.fighting_with_id].health -= player_obj.damage;
+
+      let item = {
+        id: generate_new_id_for_chat_data(),
+        template: 'generic_message',
+        options: {
+          content: `You strike ${WORLD[player_obj.fighting_with_id].name}\n
+          ${WORLD[player_obj.fighting_with_id].name} strikes you.`
+        }        
+      }
+      chat_data.push(item);
+      setRefreshChatArea(refreshChatArea => !refreshChatArea);
+    }
+
+  }   
 
   //----------------------------
   function process_input(text){
-
+    
     //Display the command on the chat
     let item = {
       id:         generate_new_id_for_chat_data(),
@@ -357,6 +402,7 @@ export default function App() {
       }
     };
     chat_data.push(item);
+    setRefreshChatArea(refreshChatArea => !refreshChatArea);
 
     //Process the input
     let parsed_input = parse_input(text);    
@@ -385,6 +431,10 @@ export default function App() {
       case('down'):
       case('d'):      
         move_cmd(parsed_input.command);
+        break;
+
+      case('k'):
+        kill_cmd(parsed_input.target);
         break;
     }
         

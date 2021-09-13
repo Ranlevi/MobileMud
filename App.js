@@ -2,7 +2,7 @@
 import React, {useState, useRef}                    from 'react';
 import { StyleSheet }                               from 'react-native';
 import {Box, NativeBaseProvider, Input, FlatList }  from 'native-base';
-import {Link, Actionsheet, Text }                   from 'native-base';
+import {Link, Actionsheet, Text, Modal }            from 'native-base';
 
 /*
 A platform for text chat game. 
@@ -77,7 +77,18 @@ let chat_data = [
    }}  
 ];
 
-
+//////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////
+function get_entity_id_by_name(name){
+  //   
+  for (const entity_id of WORLD[player_obj.current_room_id].entities){
+    let entity_name = WORLD[entity_id].name.toLowerCase();
+    if (entity_name===name){
+      return entity_id;
+    }
+  }
+  return null;
+}
 
 //////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////
@@ -115,17 +126,35 @@ function generate_new_id_for_chat_data(){
 //////////////////////////////////////////////////////////////////
 function kill_cmd(target=null){
 
-  let current_target_id = null;
+  let target_id = null;
   
   if (target===null){
-
-    current_target_id = WORLD[player_obj.current_room_id].entities[0];
+    let item = {
+      id:       generate_new_id_for_chat_data(),
+      template: 'generic_message',
+      options: {
+        content: "Who do you want to kill?"
+      }        
+    }
+    chat_data.push(item);    
+  } else {
+    //Try to match the target with the entities in the room.
+    target_id = get_entity_id_by_name(target);
+    if (target_id===null){
+      let item = {
+        id:       generate_new_id_for_chat_data(),
+        template: 'generic_message',
+        options: {
+          content: "There's no entity with this name in the room."
+        }        
+      }
+      chat_data.push(item);
+    } else {
+      //We have a match
+      player_obj.fighting_with_id = target_id;
+      WORLD[target_id].fighting_with_id = player_obj.id;
+    } 
   }
-
-  player_obj.fighting_with_id = current_target_id;
-  WORLD[current_target_id].fighting_with_id = player_obj.id;
-
-  //todo: handle different cases, add message to chat
 }
 
 //////////////////////////////////////////////////////////////////
@@ -139,8 +168,6 @@ function look_cmd(target=null){
     //Default for 'look' is to look at current room.
     target = WORLD[player_obj.current_room_id].name.toLowerCase();
   }  
-
-  
 
   let item;
   
@@ -364,10 +391,10 @@ export default function App() {
   const [showActionSheet, setShowActionSheet] = useState(false);
   const [actionsheetType, setActionsheetType] = useState("");
   const [actionsheetName, setActionsheetName] = useState("");
+  const [showCombatModal, setShowCombatModal] = useState(false);
+  const [combatModalText, setCombatModalText] = useState("");
   const [refreshChatArea, setRefreshChatArea] = useState(false);
   const [infoBarText,     setInfoBarText]     = useState("Health: 100");
-
-  
   
   setInterval(()=>{
     game_loop();
@@ -378,19 +405,35 @@ export default function App() {
     
     //Handle fights
     if (player_obj.fighting_with_id!==null){
+
+      if (showCombatModal===false) setShowCombatModal(true);
+      
       player_obj.health -= WORLD[player_obj.fighting_with_id].damage;
       WORLD[player_obj.fighting_with_id].health -= player_obj.damage;
 
-      let item = {
-        id: generate_new_id_for_chat_data(),
-        template: 'generic_message',
-        options: {
-          content: `You strike ${WORLD[player_obj.fighting_with_id].name}\n
-          ${WORLD[player_obj.fighting_with_id].name} strikes you.`
-        }        
+      let text = 
+        `You: ${player_obj.health} HP\n${WORLD[player_obj.fighting_with_id].name}:
+         ${WORLD[player_obj.fighting_with_id].health}\n\n
+         You strike ${WORLD[player_obj.fighting_with_id].name}\n
+          ${WORLD[player_obj.fighting_with_id].name} strikes you.
+        `  
+      setCombatModalText(text);
+      
+      if (WORLD[player_obj.fighting_with_id].health===0){
+        WORLD[player_obj.fighting_with_id].fighting_with_id = null;
+        player_obj.fighting_with_id = null;
+        
+        item = {
+          id:         generate_new_id_for_chat_data(),
+          template:   'generic_message',
+          options: {
+            content: `You WIN!`
+          }        
+        }
+        chat_data.push(item);
+        setRefreshChatArea(refreshChatArea => !refreshChatArea);
+        setShowCombatModal(false);
       }
-      chat_data.push(item);
-      setRefreshChatArea(refreshChatArea => !refreshChatArea);
     }
 
   }   
@@ -439,6 +482,9 @@ export default function App() {
         break;
 
       case('k'):
+      case('ki'):
+      case('kil'):
+      case('kill'):
         kill_cmd(parsed_input.target);
         break;
     }
@@ -524,6 +570,13 @@ export default function App() {
           {get_actionsheet_items()}
         </Actionsheet.Content>
       </Actionsheet>
+
+      <Modal isOpen={showCombatModal}>
+        <Modal.Content>
+          <Modal.Header>Battle!</Modal.Header>
+          <Modal.Body>{combatModalText}</Modal.Body>
+        </Modal.Content>
+      </Modal>
     </NativeBaseProvider>
   )
 }

@@ -1,5 +1,5 @@
 
-import React, {useState}                            from 'react';
+import React, {useState, useRef}                    from 'react';
 import { StyleSheet }                               from 'react-native';
 import {Box, NativeBaseProvider, Input, FlatList }  from 'native-base';
 import {Link, Actionsheet, Text }                   from 'native-base';
@@ -253,8 +253,9 @@ function ChatArea(props){
   //it as a FlatList of Boxes. Each box is rendered according
   //to a pre-determined template.
   //
+  const ChatAreaRef = useRef();
 
-  //----------------------------------------------------------
+  //--------------------------------------- -------------------
   function renderItem({item}){
 
     if (item.template==="look_room"){
@@ -346,6 +347,8 @@ function ChatArea(props){
 
   return (
     <FlatList 
+      ref={ChatAreaRef}
+      onContentSizeChange={()=> ChatAreaRef.current.scrollToEnd()}
       extraData=    {props}
       data=         {props.chat_data}
       keyExtractor= {(item)=> item.id}
@@ -363,6 +366,8 @@ export default function App() {
   const [actionsheetName, setActionsheetName] = useState("");
   const [refreshChatArea, setRefreshChatArea] = useState(false);
   const [infoBarText,     setInfoBarText]     = useState("Health: 100");
+
+  
   
   setInterval(()=>{
     game_loop();
@@ -403,7 +408,7 @@ export default function App() {
     };
     chat_data.push(item);
     setRefreshChatArea(refreshChatArea => !refreshChatArea);
-
+    
     //Process the input
     let parsed_input = parse_input(text);    
     
@@ -457,8 +462,9 @@ export default function App() {
     } else if (type==="command"){
       //Pass on as if a user-typed input.
       //Neet to refrsh chat - else it doesn't know it need to redraw Flatlist.
-      setRefreshChatArea(refreshChatArea => !refreshChatArea);
-      process_input(data); 
+      process_input(data);
+      // setRefreshChatArea(refreshChatArea => !refreshChatArea);
+       
     }
     
   }  
@@ -500,7 +506,7 @@ export default function App() {
     <NativeBaseProvider>
       <Box style={styles.container} safeArea>
 
-        <ChatArea chat_data={chat_data} handle_link_click={link_clicked}/>
+        <ChatArea chat_data={chat_data} handle_link_click={link_clicked} />
 
         <Box backgroundColor="white">
           <Text fontSize="lg" >{infoBarText}</Text>

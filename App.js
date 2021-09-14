@@ -109,7 +109,10 @@ function parse_input(input){
   } else if (arr.length===2){
     parsed_input.command = arr[0];
     parsed_input.target  = arr[1];
-  }  
+  } else {
+    parsed_input.command = arr[0];
+    parsed_input.target = arr.slice(1).join(' ');
+  }
     
   return parsed_input;
 }
@@ -120,6 +123,18 @@ function generate_new_id_for_chat_data(){
   let current_id =  parseInt(chat_data[chat_data.length-1].id);    
   let new_id     = (current_id+1).toString(10);  
   return new_id;
+}
+
+//////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////
+function generate_new_id_for_entity(){
+  var result           = '';
+  var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  var charactersLength = characters.length;
+  for ( var i = 0; i < length; i++ ) {
+    result += characters.charAt(Math.floor(Math.random()*charactersLength));
+ }
+ return result;
 }
 
 //////////////////////////////////////////////////////////////////
@@ -180,7 +195,7 @@ function look_cmd(target=null){
     let entities =          WORLD[player_obj.current_room_id].entities.map(arr_item => {
       let obj  = {};
       obj.name = WORLD[arr_item].name;
-      obj.id   = arr_item;
+      obj.id   = arr_item;      
       return obj;    
     });
   
@@ -419,10 +434,8 @@ export default function App() {
         `  
       setCombatModalText(text);
       
-      if (WORLD[player_obj.fighting_with_id].health===0){
-        WORLD[player_obj.fighting_with_id].fighting_with_id = null;
-        player_obj.fighting_with_id = null;
-        
+      if (WORLD[player_obj.fighting_with_id].health<=0){
+                
         item = {
           id:         generate_new_id_for_chat_data(),
           template:   'generic_message',
@@ -433,6 +446,28 @@ export default function App() {
         chat_data.push(item);
         setRefreshChatArea(refreshChatArea => !refreshChatArea);
         setShowCombatModal(false);
+
+        //Transform entity to corpse
+        WORLD[player_obj.fighting_with_id].fighting_with_id = null;
+        WORLD[player_obj.fighting_with_id].name             = `The corpse of ${WORLD[player_obj.fighting_with_id].name}`;
+        WORLD[player_obj.fighting_with_id].description      = `It's dead, Jim.`;
+        WORLD[player_obj.fighting_with_id].type             = 'corpse';
+
+        //Stop the fight
+        player_obj.fighting_with_id = null;
+        setInfoBarText(`Health: ${player_obj.health}`);
+      } else if (player_obj.health<=0){
+        //player died.
+        //generate a new corpse entity, transport the player to starting room.
+        let corpse_new_id = generate_new_id_for_entity();
+        WORLD[corpse_new_id] = {
+          type:             'corpse',
+          name:             `The Corpse of ${player_obj.name}`, 
+          description:      "It's dead, Jim.",
+          health:           0,
+          damage:           0,
+          fighting_with_id: null
+        }
       }
     }
 
@@ -454,7 +489,7 @@ export default function App() {
     
     //Process the input
     let parsed_input = parse_input(text);    
-    
+
     switch(parsed_input.command){
       case(null):
         break;
@@ -495,23 +530,15 @@ export default function App() {
   function link_clicked(type, data){
     //Handles clicks on link, according to their type.
     
-    if (type==="room"){
-      //Set options for the Actionsheet
-      setActionsheetType(WORLD[data].type);
-      setActionsheetName(WORLD[data].name);
-      setShowActionSheet(true);    
-    } else if (type==="npc"){
+    if (type==="room" || type==="npc" || type==="corpse"){
       //Set options for the Actionsheet
       setActionsheetType(WORLD[data].type);
       setActionsheetName(WORLD[data].name);
       setShowActionSheet(true);    
     } else if (type==="command"){
       //Pass on as if a user-typed input.
-      //Neet to refrsh chat - else it doesn't know it need to redraw Flatlist.
-      process_input(data);
-      // setRefreshChatArea(refreshChatArea => !refreshChatArea);
-       
-    }
+      process_input(data);       
+    } 
     
   }  
 
@@ -522,28 +549,56 @@ export default function App() {
       let cmd = `look ${actionsheetName}`;
 
       return(
-        <Actionsheet.Item 
-          onPress={()=> {
-            setShowActionSheet(false);
-            process_input(cmd);
-          }}
-        >
-        {cmd}
-        </Actionsheet.Item>
+        <Actionsheet.Content>
+          <Actionsheet.Item 
+            onPress={()=> {
+              setShowActionSheet(false);
+              process_input(cmd);
+            }}
+          >
+          {cmd}
+          </Actionsheet.Item>
+        </Actionsheet.Content>
       )
     
     } else if (actionsheetType==="npc"){
+      let look_cmd = `look ${actionsheetName}`;
+      let kill_cmd = `kill ${actionsheetName}`
+      return(
+        <Actionsheet.Content>
+          <Actionsheet.Item 
+            onPress={()=> {
+              setShowActionSheet(false);
+              process_input(look_cmd);
+            }}
+          >
+          {look_cmd}
+          </Actionsheet.Item>
+
+          <Actionsheet.Item 
+          onPress={()=> {
+            setShowActionSheet(false);
+            process_input(kill_cmd);
+          }}
+        >
+        {kill_cmd}
+        </Actionsheet.Item>
+      </Actionsheet.Content>
+      )
+    } else if (actionsheetType==="corpse"){
       let cmd = `look ${actionsheetName}`;
 
       return(
-        <Actionsheet.Item 
-          onPress={()=> {
-            setShowActionSheet(false);
-            process_input(cmd);
-          }}
-        >
-        {cmd}
-        </Actionsheet.Item>
+        <Actionsheet.Content>
+          <Actionsheet.Item 
+            onPress={()=> {
+              setShowActionSheet(false);
+              process_input(cmd);
+            }}
+          >
+          {cmd}
+          </Actionsheet.Item>
+        </Actionsheet.Content>
       )
     }
   }
@@ -566,9 +621,7 @@ export default function App() {
       </Box>
 
       <Actionsheet isOpen={showActionSheet}>
-        <Actionsheet.Content>        
-          {get_actionsheet_items()}
-        </Actionsheet.Content>
+        {get_actionsheet_items()}        
       </Actionsheet>
 
       <Modal isOpen={showCombatModal}>

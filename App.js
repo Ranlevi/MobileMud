@@ -36,7 +36,7 @@ const WORLD = {
     type:             'npc',
     name:             'Archie', 
     description:      "This is a Dog.",
-    health:           10,
+    health:           1000,
     damage:           1,
     fighting_with_id: null
   },
@@ -52,6 +52,7 @@ const WORLD = {
 
 let player_obj = {
   id:               '1234',
+  name:             'Harpoon',
   current_room_id:  'ABCD',
   health:           100,
   damage:           1,
@@ -415,9 +416,11 @@ export default function App() {
     game_loop();
   },1000);
 
+  let tick = 0;
   //--------------------------------
   function game_loop(){
-    
+    tick += 1;
+    console.log(tick);
     //Handle fights
     if (player_obj.fighting_with_id!==null){
 
@@ -434,7 +437,7 @@ export default function App() {
         `  
       setCombatModalText(text);
       
-      if (WORLD[player_obj.fighting_with_id].health<=0){
+      if (WORLD[player_obj.fighting_with_id].health===0){
                 
         item = {
           id:         generate_new_id_for_chat_data(),
@@ -453,13 +456,15 @@ export default function App() {
         WORLD[player_obj.fighting_with_id].description      = `It's dead, Jim.`;
         WORLD[player_obj.fighting_with_id].type             = 'corpse';
 
+        setInfoBarText(`Health: ${player_obj.health}`);
+
         //Stop the fight
         player_obj.fighting_with_id = null;
-        setInfoBarText(`Health: ${player_obj.health}`);
-      } else if (player_obj.health<=0){
+      } else if (player_obj.health===0){
         //player died.
         //generate a new corpse entity, transport the player to starting room.
         let corpse_new_id = generate_new_id_for_entity();
+
         WORLD[corpse_new_id] = {
           type:             'corpse',
           name:             `The Corpse of ${player_obj.name}`, 
@@ -468,6 +473,15 @@ export default function App() {
           damage:           0,
           fighting_with_id: null
         }
+
+        WORLD[player_obj.current_room_id].entities.push(corpse_new_id);
+        player_obj.current_room_id = 'ABCD';
+        player_obj.health = 100;
+
+        WORLD[player_obj.fighting_with_id].fighting_with_id = null;
+        player_obj.fighting_with_id = null;
+        setShowCombatModal(false);
+
       }
     }
 
@@ -620,7 +634,10 @@ export default function App() {
         />
       </Box>
 
-      <Actionsheet isOpen={showActionSheet}>
+      <Actionsheet 
+        isOpen={showActionSheet}
+        onClose={()=> setShowActionSheet(false)}
+      >
         {get_actionsheet_items()}        
       </Actionsheet>
 

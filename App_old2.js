@@ -9,6 +9,7 @@ Design conventions:
 
 */
 
+
 //-- Entities Classes
 
 //////////////////////////////
@@ -87,10 +88,10 @@ class Player {
 
 let   current_id=           0; //IDs are of type Number.
 const World=                new Map();
+let   chat_data=            [];
 let   current_chat_item_id= 0;
 let   player_id=            null;
 
-init_world();
 
 ///////////////////////////////////////////////
 ///////////////////////////////////////////////
@@ -116,8 +117,10 @@ function init_world(){
 
   player_id = player.id;
 
-  // add_chat_item('look_room', {room_id: room.id});    
+  add_chat_item('look_room', {room_id: room.id});    
 }
+
+init_world();
 
 //-- Utitility Functions
 
@@ -128,8 +131,83 @@ function get_new_id(){
   return current_id;
 }
 
-///////////////////////////////////////////////
+function test(){
+  console.log('hi');
+}
 
+///////////////////////////////////////////////
+///////////////////////////////////////////////
+function add_chat_item(template, data){
+  //get data and converts it to a chat item format.
+
+  //template="look_room", data: {room_id: Number}
+  let content;
+  if (template==="look_room"){
+    let room = World.get(data.room_id);
+        
+    content = <Box>
+                <Text 
+                  color="blue.500" 
+                  underline 
+                  fontSize="xl"
+                  onPress={()=> test()}
+                >
+                  {room.name}
+                </Text>
+                <Text>This is a line</Text>
+              </Box>
+  }
+
+  current_chat_item_id = current_chat_item_id+1;
+  let chat_item = {
+    id:       current_chat_item_id.toString(),
+    template: template,
+    content:  content
+  };
+
+
+  /*
+  current_chat_item_id = current_chat_item_id+1;
+  let chat_item = {
+    id:       current_chat_item_id.toString(),
+    template: template,
+    data:     null
+  };
+
+  if (template==="look_room"){
+
+    let room = World.get(data.room_id);
+
+    chat_item.data = {      
+      id:           room.id,
+      name:         room.name,
+      description:  room.description,
+      exits:        room.get_exits(),
+      entities:     room.entities
+    }
+  } else if (template==="user_text"){
+    chat_item.data = {
+      content: data.content
+    }
+  } else if (template==="look_entity"){
+
+    let entity = World.get(data.entity_id);
+
+    chat_item.data = {
+      id:           entity.id,
+      name:         entity.name,
+      description:  entity.description
+    }
+  } else if (template==="generic_message"){
+    chat_item.data = {
+      content: data.text
+    }
+  }
+
+  */
+
+  chat_data.push(chat_item);
+}
 
 ///////////////////////////////////////////////
 ///////////////////////////////////////////////
@@ -305,81 +383,6 @@ function UserText_ChatBox(props){
 function ChatArea(props){
   
   const ChatAreaRef = useRef();
-  const [chatData, setChatData] = [];//add here first box to dislapy.
-
-
-  ///////////////////////////////////////////////
-  function add_chat_item(template, data){
-    //get data and converts it to a chat item format.
-
-    //template="look_room", data: {room_id: Number}
-    let content;
-    if (template==="look_room"){
-      let room = World.get(data.room_id);
-          
-      content = <Box>
-                  <Text 
-                    color="blue.500" 
-                    underline 
-                    fontSize="xl"
-                    onPress={()=> test()}
-                  >
-                    {room.name}
-                  </Text>
-                  <Text>This is a line</Text>
-                </Box>
-    }
-
-    current_chat_item_id = current_chat_item_id+1;
-    let chat_item = {
-      id:       current_chat_item_id.toString(),
-      template: template,
-      content:  content
-    };
-
-
-    /*
-    current_chat_item_id = current_chat_item_id+1;
-    let chat_item = {
-      id:       current_chat_item_id.toString(),
-      template: template,
-      data:     null
-    };
-
-    if (template==="look_room"){
-
-      let room = World.get(data.room_id);
-
-      chat_item.data = {      
-        id:           room.id,
-        name:         room.name,
-        description:  room.description,
-        exits:        room.get_exits(),
-        entities:     room.entities
-      }
-    } else if (template==="user_text"){
-      chat_item.data = {
-        content: data.content
-      }
-    } else if (template==="look_entity"){
-
-      let entity = World.get(data.entity_id);
-
-      chat_item.data = {
-        id:           entity.id,
-        name:         entity.name,
-        description:  entity.description
-      }
-    } else if (template==="generic_message"){
-      chat_item.data = {
-        content: data.text
-      }
-    }
-
-    */
-
-    chat_data.push(chat_item);
-  }
 
   //--------------------------------------- -------------------
   function renderItem({item}){
@@ -485,7 +488,49 @@ function UserInput(props){
   
 }
 
+//-- Game Commands
 
+///////////////////////////////////////////////
+function cmd_look(target=null){
+
+  let current_room = World.get(World.get(player_id).current_room_id);
+
+  if (target===null || target===current_room.name.toLowerCase()){
+    add_chat_item('look_room', {room_id: current_room.id});
+  } else {
+    
+    let target_found = false;
+    for (const entity_id of current_room.entities){              
+      if (target===World.get(entity_id).name.toLowerCase()){        
+        target_found = true;
+        add_chat_item('look_entity', {entity_id: entity_id});
+        break;
+      }
+    }
+
+    if (!target_found){
+      add_chat_item('generic_message', {text: `There's no ${target} around.`});
+    }
+  }
+}
+
+///////////////////////////////////////////////
+function cmd_move(cmd){
+
+  let current_room= World.get(World.get(player_id).current_room_id);
+  let next_room_id= current_room.exits[cmd];
+
+  if (next_room_id===null){
+    add_chat_item('generic_message', {text: `There's no exit ${cmd}.`});
+  } else {
+    World.get(player_id).current_room_id = next_room_id;
+    current_room.remove_entity(player_id);
+    World.get(next_room_id).add_entity(player_id);
+
+    cmd_look();
+  }
+
+}
 
 ///////////////////////////////////////////////
 ///////////////////////////////////////////////
@@ -495,55 +540,6 @@ export default function App() {
   const [openCmdActnSht, setOpenCmdActnSht] = useState(false);
   const [infobarText,    setInfobarText]    = useState("Text");
   const [cmdActnSht_Content, setCmdActnSht_Content] = useState([]);
-
-  
-
-  
-
-  //-- Game Commands
-
-  ///////////////////////////////////////////////
-  function cmd_look(target=null){
-
-    let current_room = World.get(World.get(player_id).current_room_id);
-
-    if (target===null || target===current_room.name.toLowerCase()){
-      add_chat_item('look_room', {room_id: current_room.id});
-    } else {
-      
-      let target_found = false;
-      for (const entity_id of current_room.entities){              
-        if (target===World.get(entity_id).name.toLowerCase()){        
-          target_found = true;
-          add_chat_item('look_entity', {entity_id: entity_id});
-          break;
-        }
-      }
-
-      if (!target_found){
-        add_chat_item('generic_message', {text: `There's no ${target} around.`});
-      }
-    }
-  }
-
-  ///////////////////////////////////////////////
-  function cmd_move(cmd){
-
-    let current_room= World.get(World.get(player_id).current_room_id);
-    let next_room_id= current_room.exits[cmd];
-
-    if (next_room_id===null){
-      add_chat_item('generic_message', {text: `There's no exit ${cmd}.`});
-    } else {
-      World.get(player_id).current_room_id = next_room_id;
-      current_room.remove_entity(player_id);
-      World.get(next_room_id).add_entity(player_id);
-
-      cmd_look();
-    }
-
-  }
-
 
   //------------------------------
   function link_handler(type, entity_id){
@@ -610,10 +606,10 @@ export default function App() {
   return (
     <NativeBaseProvider>
 
-      <Box          style={styles.container} safeArea>
-        <ChatArea   chat_data={chat_data} link_handler={link_handler}/>
-        <InfoBar    text={infobarText}/>        
-        <UserInput  process_user_input={process_user_input}/>
+      <Box style={styles.container} safeArea>
+        <ChatArea chat_data={chat_data} link_handler={link_handler}/>
+        <InfoBar text={infobarText}/>        
+        <UserInput process_user_input={process_user_input}/>
       </Box>
 
       <CommandsActionsheet openCmdActnSht={openCmdActnSht} content={cmdActnSht_Content}/>

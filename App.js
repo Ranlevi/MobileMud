@@ -29,6 +29,7 @@ class Room {
       'down':  null
     },
     this.entities     = []
+    World.set(this.id, this);
   }
 
   set_name(name){
@@ -41,6 +42,35 @@ class Room {
 
   add_exit(direction, next_room_id){
     this.exits[direction] = next_room_id;
+    let opposite_exit_direction;
+
+    switch(direction){
+      case 'north':
+        opposite_exit_direction = 'south';
+        break;
+
+      case 'south':
+      opposite_exit_direction = 'north';
+      break;
+
+      case 'east':
+        opposite_exit_direction = 'west';
+        break;
+
+      case 'west':
+        opposite_exit_direction = 'east';
+        break;
+
+      case 'up':
+        opposite_exit_direction = 'down';
+        break;
+
+      case 'down':
+        opposite_exit_direction = 'up';
+        break;
+    }
+
+    World.get(next_room_id).exits[opposite_exit_direction] = this.id;
   }
 
   remove_exit(direction){
@@ -59,6 +89,7 @@ class Room {
 
   add_entity(entity_id){
     this.entities.push(entity_id);
+    World.get(entity_id).current_room_id = this.id;
   }
 
   remove_entity(entity_id){
@@ -66,7 +97,11 @@ class Room {
     if (ix!==-1){
       this.entities.splice(ix,1);
     }
-  }   
+  }
+
+  process_tick(){
+    return [null, null];
+  }
 }
 
 //////////////////////////////
@@ -81,6 +116,57 @@ class Player {
     this.damage=            1;
     this.fighting_with_id=  null;
     this.current_room_id=   null;
+    World.set(this.id, this);
+  }
+
+  process_tick(){
+    return [null, null];
+  }
+}
+
+class NPC {
+  constructor(){
+    this.type=              'entity.npc';
+    this.id=                get_new_id();
+    this.name=              'NPC';
+    this.description=       "It's an NPC.";
+    this.hp=                100;
+    this.damage=            1;
+    this.current_room_id=   null;
+    this.fighting_with_id=  null;
+    World.set(this.id, this);
+  }
+
+  set_name(name){
+    this.name = name;
+  }
+
+  set_description(description){
+    this.description = description;
+  }
+
+  process_tick(){
+    return [null, null];
+  }
+}
+
+class Dog extends NPC {
+  constructor(){
+    super();
+    this.tick_counter= 0;
+  }
+
+  process_tick(){
+    //once every 10 tick - bark. 
+    this.tick_counter += 1;
+    if (this.tick_counter % 10===0){
+      let template = "generic_message";
+      let data     = {content: "Archie barks and wags his tale."};
+      return [template, data];
+    } else {
+      return [null, null];
+    }
+
   }
 }
 
@@ -99,21 +185,20 @@ function init_world(){
   let room= new Room();
   room.set_name("Room 1");
   room.set_description("This is the starting room of the game.");
-  World.set(room.id, room);
+  
+  let dog= new Dog();
+  dog.set_name('Archie');
+  dog.set_description("It's a pretty, but quite stupid, dog.");
+  room.add_entity(dog.id);  
 
   let room2= new Room();
   room2.set_name("Room 2");
   room2.set_description("This is the 2nd room of the game.");
   room2.add_exit('south', room.id);
-  World.set(room2.id, room2);
-
-  room.add_exit('north', room2.id);
-
-  let player = new Player();
-  player.current_room_id = room.id;
+  
+    let player = new Player();  
   room.add_entity(player.id);
-  World.set(player.id, player);
-
+  
   player_id = player.id;  
 }
 
@@ -275,7 +360,6 @@ function UserInput(props){
 }
 
 
-
 ///////////////////////////////////////////////
 ///////////////////////////////////////////////
 ///////////////////////////////////////////////
@@ -285,12 +369,28 @@ export default function App() {
   const [infobarText,    setInfobarText]            = useState("Text");
   const [cmdActnSht_Content, setCmdActnSht_Content] = useState([]);  
   
-  const [chatData,    setChatData]    = useState([
+  const [chatData,    setChatData]                  = useState([
     { id:       get_new_id(),
       template: 'look_room',
       content:  generate_look_room_chat_item_content({room_id: '1'})
     }
   ]);
+
+  setInterval(()=>{
+    game_loop();
+  },1000);
+
+  function game_loop(){
+    
+    World.forEach((entity, id)=>{
+      console.log(entity.name);
+    })
+
+    // for (const [id, entity] of World){
+      // console.log(entity);
+      // let [template, data] = entity.process_tick();
+      // add_chat_item(template, data);
+  }  
 
   //-- Aux functions
 
@@ -373,6 +473,31 @@ export default function App() {
     )
   }
 
+  function generate_look_npc_chat_item_content(data){
+    let entity = World.get(data.entity_id);
+    return (
+      <Box 
+        style=                  {styles.chat_box_system} 
+        borderRadius=           "10px" 
+        borderBottomLeftRadius= "0px"
+        borderColor=            "primary.600"
+        borderWidth=            "3px"
+      >
+        <Text
+          underline 
+          color=      "blue.500"                     
+          fontSize=   "xl"
+          onPress=    {()=> link_handler('entity.npc', {entity_id:data.entity_id})}
+        >
+          {entity.name}
+        </Text>
+        <Text>
+        {entity.description}
+        </Text>         
+      </Box>
+    )
+  }
+
   function generate_generic_message_chat_item_content(data){
     return (
       <Box 
@@ -406,7 +531,9 @@ export default function App() {
     //get data and converts it to a chat item format.
     
     let content;
-    if (template==="look_room"){      
+    if (template===null){
+      return;
+    } else if (template==="look_room"){      
       content = generate_look_room_chat_item_content(data);
     } else if (template==="look_player"){
       content= generate_look_player_chat_item_content(data) 
@@ -414,8 +541,10 @@ export default function App() {
       content = generate_generic_message_chat_item_content(data);      
     }  else if (template==="user_text"){
       content = generate_user_text_chat_item_content(data);      
+    } else if (template==="look_npc"){
+      content = generate_look_npc_chat_item_content(data);      
     }
-    
+
     let new_chat_item = {
       id:       get_new_id(),
       template: template,
@@ -424,6 +553,7 @@ export default function App() {
     
     setChatData((chatData => [...chatData, new_chat_item]));
   }
+
 
   //-- Game Commands
 
@@ -443,7 +573,9 @@ export default function App() {
           target_found = true;
           if (World.get(entity_id).type==="entity.player"){
             add_chat_item('look_player', {entity_id: entity_id});          
-          }          
+          } else if (World.get(entity_id).type==="entity.npc"){
+            add_chat_item('look_npc', {entity_id: entity_id});          
+          }
           break;
         }
       }
@@ -459,9 +591,9 @@ export default function App() {
 
     let current_room= World.get(World.get(player_id).current_room_id);
     let next_room_id= current_room.exits[cmd];
-
+    
     if (next_room_id===null){
-      add_chat_item('generic_message', {text: `There's no exit ${cmd}.`});
+      add_chat_item('generic_message', {content: `There's no exit ${cmd}.`});
     } else {
       World.get(player_id).current_room_id = next_room_id;
       current_room.remove_entity(player_id);
@@ -499,13 +631,11 @@ export default function App() {
         target=         World.get(options.entity_id).name;
         break;
     }
-
-    // let key     = 0;
+    
     let content = [];
     for (const cmd of commands_array){
 
       let text = cmd + ` ${target}`;
-      // key      = key+1;
 
       content.push(
         <Actionsheet.Item 

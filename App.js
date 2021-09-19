@@ -1,4 +1,4 @@
-import React, {useState, useRef}                    from 'react';
+import React, {useState, useRef, useEffect}         from 'react';
 import { StyleSheet }                               from 'react-native';
 import {Box, NativeBaseProvider, Input, FlatList }  from 'native-base';
 import {Link, Actionsheet, Text, Modal }            from 'native-base';
@@ -159,7 +159,9 @@ class Dog extends NPC {
   process_tick(){
     //once every 10 tick - bark. 
     this.tick_counter += 1;
+    console.log(this.tick_counter);
     if (this.tick_counter % 10===0){
+      console.log('here');
       let template = "generic_message";
       let data     = {content: "Archie barks and wags his tale."};
       return [template, data];
@@ -203,6 +205,26 @@ function init_world(){
 }
 
 //-- Utitility Functions
+
+function useInterval(callback, delay) {
+  const savedCallback = useRef();
+
+  // Remember the latest callback.
+  useEffect(() => {
+    savedCallback.current = callback;
+  }, [callback]);
+
+  // Set up the interval.
+  useEffect(() => {
+    function tick() {
+      savedCallback.current();
+    }
+    if (delay !== null) {
+      let id = setInterval(tick, delay);
+      return () => clearInterval(id);
+    }
+  }, [delay]);
+}
 
 //////////////////////////////
 //////////////////////////////
@@ -285,16 +307,13 @@ function ChatArea(props){
   const ChatAreaRef                   = useRef();
 
   //--------------------------------------- -------------------
-  function renderItem({item}){
-    
+  function renderItem({item}){    
     return (
       <Box>
         {item.content}
       </Box>      
-    )
- 
+    ) 
   };
-  //----------------------------------------------------------
 
   return (
     <FlatList 
@@ -376,14 +395,17 @@ export default function App() {
     }
   ]);
 
-  setInterval(()=>{
-    game_loop();
-  },1000);
-
+  requestAnimationFrame(game_loop);
+  
   function game_loop(){
     
     World.forEach((entity, id)=>{
-      console.log(entity.name);
+    let [template, data] = entity.process_tick();
+    if (template!==null){
+      add_chat_item(template, data);
+    }
+    requestAnimationFrame(game_loop);
+
     })
 
     // for (const [id, entity] of World){
